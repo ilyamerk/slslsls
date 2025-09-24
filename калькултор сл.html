@@ -714,6 +714,7 @@ html, body { background-clip: border-box; }
     }
 
     // ===== Кластеры =====
+    // ===== Кластеры =====
     const CLASSIFICATION_RULES = {
       group1: {
         title: 'Пороги для ролей ОД / РУ / РМ',
@@ -924,6 +925,7 @@ html, body { background-clip: border-box; }
       }
       el.innerHTML = html;
     }
+
 
     // ===== Премии =====
     function bonusBK(cb, cl){
@@ -1295,6 +1297,15 @@ html, body { background-clip: border-box; }
         extra.classList.add('hidden');
       }
     });
+
+        extra.classList.remove('hidden');
+      } else {
+        $('#clusterBiz').textContent = '—';
+        $('#clusterLead').textContent = '—';
+        $('#bonus').textContent = '—';
+        $('#finalLabel').textContent = '—';
+        extra.classList.add('hidden');
+      }
 
     // Первичное состояние + улучшения
     configureUI();
