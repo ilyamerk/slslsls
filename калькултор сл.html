@@ -147,8 +147,26 @@ html, body { background-clip: border-box; }
     .hint{font-size:12px;color:var(--muted)}
     .hidden{display:none}
 
+    /* ===== Calculation breakdown ===== */
+    .calc-grid{display:grid;gap:12px}
+    @media(min-width:900px){.calc-grid{grid-template-columns:repeat(2,1fr)}}
+    .calc-card{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02)), var(--bg-2);
+      border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:var(--shadow);}
+    .calc-card h5{margin:0 0 12px;font-size:16px}
+    .calc-list{list-style:none;margin:0;padding:0;font-size:14px;line-height:1.5}
+    .calc-list li{margin:0 0 12px}
+    .calc-list strong{display:block;font-weight:700;font-size:13px;text-transform:none}
+    .calc-formula{font-family:"IBM Plex Mono","Fira Mono",monospace;font-size:12px;margin:0 0 10px;padding:8px 10px;
+      background:rgba(124,58,237,.08);border-radius:12px}
+    .calc-note{font-size:12px;color:var(--muted);margin:6px 0 0}
+    .calc-rules{list-style:none;margin:6px 0 12px;padding:0;font-size:12px;line-height:1.4}
+    .calc-rules li{margin:0 0 4px}
+    .calc-rules .is-match{color:var(--accent-2);font-weight:700}
+    .calc-highlight{color:var(--accent-2);font-weight:800}
+    .calc-empty{font-size:14px;color:var(--muted)}
+
     /* ===== Custom selects ===== */
-    .native-hidden{display:none}
+    .has-js .native-hidden{display:none}
     .csel{position:relative}
     .csel-btn{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .csel-arrow{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #94a3b8;transition:transform .15s ease}
@@ -332,15 +350,46 @@ html, body { background-clip: border-box; }
           </div>
           <p class="muted" id="finalLabel" style="margin-top:8px"></p>
         </div>
+
+        <div class="section hidden" id="calc-details">
+          <h4 style="margin:0 0 12px">Логика расчётов</h4>
+          <div class="calc-grid">
+            <div class="calc-card" id="bizDetails"></div>
+            <div class="calc-card" id="leadDetails"></div>
+            <div class="calc-card" id="penaltyDetails"></div>
+            <div class="calc-card" id="bonusDetails"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
+    document.documentElement.classList.add('has-js');
+
     // ===== Утилиты =====
     const $ = (sel)=>document.querySelector(sel);
     const fmt = (x)=> Number.isFinite(x) ? x.toFixed(2) : '—';
     const num = (v)=>{ if (v===''||v==null) return null; v = String(v).replace(',', '.'); const n = Number(v); return Number.isFinite(n) ? n : null; };
+    const fmtScore = (x)=> Number.isFinite(x) ? (Number.isInteger(x) ? String(x) : x.toFixed(2)) : '—';
+    const fmtValue = (x, suffix='')=> Number.isFinite(x) ? `${Number(x).toLocaleString('ru-RU',{maximumFractionDigits:2})}${suffix}` : '—';
+    const fmtMult = (x)=> Number.isFinite(x) ? Number(x).toLocaleString('ru-RU',{maximumFractionDigits:2}) : '—';
+
+    const SCALE_TEXT = {
+      idxQualityDefault: 'Шкала: <90 → 1; 90–96 → 2; >96 → 3',
+      idxQualityBK: 'Шкала: <90 → 1; 90–93 → 2; >93 → 3',
+      idxQualityFCSpecial: 'Шкала: <90 → 1; 90–95 → 2; >95 → 3',
+      to: 'Шкала: <94 → 1; 94–<97 → 2; ≥97 → 3',
+      mp: 'Шкала: <95 → 1; 95–<97 → 2; ≥97 → 3',
+      axio: 'Шкала: ≤60 → 1; 61–80 → 2; >80 → 3',
+      hr: 'Шкала: <85 → 1; 85–89 → 2; ≥90 → 3',
+      assess: 'Шкала: ≤1.9 → 1; 1.91–2.79 → 2; ≥2.8 → 3',
+      productivity: 'Шкала: <90 → 1; 90–95 → 2; >95 → 3',
+      budgetExec: 'Шкала: <90 → 1; 90–95 → 2; >95 → 3',
+      planProdFC: 'Шкала: <95 → 1; 95–98 → 2; >98 → 3',
+      underloadFC: 'Шкала: >2 → 1; 1–2 → 2; <1 → 3',
+      teamIndex: 'Используется введённый балл (0–3)',
+    };
 
     // ===== Custom Select (generic) =====
     function mountCustom(selId, mountId){
@@ -351,10 +400,13 @@ html, body { background-clip: border-box; }
       const allOpts = Array.from(sel.options);
       const opts = allOpts.filter(o=>!o.disabled);
       const current = sel.value || '';
-      const placeholder = (allOpts.find(o=>o.disabled)?.text) || '— выберите —';
-      const currentText = current
-        ? (opts.find(o=>o.value===current)?.text || placeholder)
-        : placeholder;
+      const placeholderOpt = allOpts.find(o=>o.disabled);
+      const placeholder = (placeholderOpt ? placeholderOpt.text : null) || '— выберите —';
+      let currentText = placeholder;
+      if(current){
+        const currentOpt = opts.find(o=>o.value===current);
+        currentText = currentOpt ? currentOpt.text : placeholder;
+      }
 
       mount.innerHTML = `
         <button type="button" class="csel-btn" id="${mountId}Btn" aria-haspopup="listbox" aria-expanded="false">
@@ -515,76 +567,374 @@ html, body { background-clip: border-box; }
       const t1 = num($('#idxTO').value);
       const t2 = num($('#idxMP').value);
 
+      const breakdown = {title:'Эффективность на бизнес', metrics:[]};
+      const addMetric = (data)=>{
+        breakdown.metrics.push({
+          label: data.label,
+          value: data.valueDisplay != null ? data.valueDisplay : fmtValue(data.value, data.suffix||''),
+          score: data.score,
+          scale: data.scale || '',
+          note: data.note || '',
+        });
+      };
+
       if(bu==='ФК' && FC_ROLES.includes(role)){
         const s1 = scoreIdxQuality_FC(q);
         const s2 = scorePlanProd_FC(t1);
         const s3 = scoreUnderload_FC(t2);
-        return (s1 + s2 + s3) / 3;
+
+        addMetric({label:'Индекс качества', value:q, suffix:'%', score:s1, scale:SCALE_TEXT.idxQualityFCSpecial});
+        addMetric({label:'Выполнение плана выпуска продукции', value:t1, suffix:'%', score:s2, scale:SCALE_TEXT.planProdFC});
+        addMetric({label:'% недогрузов на сеть', value:t2, suffix:'%', score:s3, scale:SCALE_TEXT.underloadFC});
+
+        const total = (s1 + s2 + s3) / 3;
+        breakdown.formula = `(${fmtScore(s1)} + ${fmtScore(s2)} + ${fmtScore(s3)}) / 3 = ${fmt(total)}`;
+        breakdown.note = 'Среднее арифметическое трёх показателей';
+        breakdown.context = 'Формула для производственных ролей ФК';
+        return {score: total, breakdown};
       }
+
       const s1 = scoreIndexQuality(bu,q);
       const s2 = scoreTO(t1);
       const s3 = scoreMP(t2);
-      return (s1 + s2 + s3) / 3;
+
+      const idxScale = (bu==='БК') ? SCALE_TEXT.idxQualityBK : SCALE_TEXT.idxQualityDefault;
+      addMetric({label:'Индекс качества', value:q, suffix:'%', score:s1, scale:idxScale});
+      addMetric({label:'Выполнение плана по ТО', value:t1, suffix:'%', score:s2, scale:SCALE_TEXT.to});
+      addMetric({label:'Выполнение плана по проникновению МП', value:t2, suffix:'%', score:s3, scale:SCALE_TEXT.mp});
+
+      const total = (s1 + s2 + s3) / 3;
+      breakdown.formula = `(${fmtScore(s1)} + ${fmtScore(s2)} + ${fmtScore(s3)}) / 3 = ${fmt(total)}`;
+      breakdown.note = 'Среднее арифметическое трёх показателей';
+      breakdown.context = 'Формула для выбранного БЮ';
+      return {score: total, breakdown};
     }
 
     // ===== Лидерство =====
     function computeLeadershipScore(){
       const bu = $('#bu').value; const role = $('#role').value;
-      const ax = scoreAxiology(num($('#axio').value));
-      const hr = scoreHR(num($('#hr').value));
-      const as = scoreAssess(num($('#assess').value));
+      const axRaw = num($('#axio').value);
+      const hrRaw = num($('#hr').value);
+      const assessRaw = num($('#assess').value);
 
-      // штрафы
+      const axScore = scoreAxiology(axRaw);
+      const hrScore = scoreHR(hrRaw);
+      const assessScore = scoreAssess(assessRaw);
+
+      const breakdown = {title:'Лидерство', metrics:[], steps:[], penalties:[]};
+      const addMetric = (data)=>{
+        breakdown.metrics.push({
+          label: data.label,
+          value: data.valueDisplay != null ? data.valueDisplay : fmtValue(data.value, data.suffix||''),
+          score: data.score,
+          scale: data.scale || '',
+          note: data.note || '',
+        });
+      };
+
+      addMetric({label:'Аксиология', value:axRaw, suffix:'%', score:axScore, scale:SCALE_TEXT.axio});
+      addMetric({label:'HR-индекс', value:hrRaw, suffix:'%', score:hrScore, scale:SCALE_TEXT.hr});
+      addMetric({label:'Ассессмент', value:assessRaw, score:assessScore, scale:SCALE_TEXT.assess});
+
+      let baseTotal = 0;
+      if(bu==='ФК' && FC_ROLES.includes(role)){
+        const prodRaw = num($('#productivity').value);
+        const prodScore = scoreProductivity(prodRaw);
+        addMetric({label:'Производительность', value:prodRaw, suffix:'%', score:prodScore, scale:SCALE_TEXT.productivity});
+
+        if(role==='Директор Производства'){
+          const budgetRaw = num($('#budgetExec').value);
+          const budgetScore = scoreBudgetExec(budgetRaw);
+          addMetric({label:'% исполнения бюджета', value:budgetRaw, suffix:'%', score:budgetScore, scale:SCALE_TEXT.budgetExec});
+
+          const teamRaw = num($('#teamIndex').value);
+          const teamScore = Number.isFinite(teamRaw) ? teamRaw : 0;
+          const teamValue = Number.isFinite(teamRaw) ? fmtValue(teamRaw) : '— (использовано 0)';
+          addMetric({
+            label:'Балл (индекс команды)',
+            valueDisplay: teamValue,
+            score: teamScore,
+            scale: SCALE_TEXT.teamIndex,
+            note: Number.isFinite(teamRaw) ? '' : 'Поле пустое — в расчёте используется 0.',
+          });
+
+          const mid = (axScore + assessScore + budgetScore) / 3;
+          baseTotal = (mid + hrScore + prodScore + teamScore) / 4;
+          breakdown.steps.push({
+            label:'Среднее по Аксиологии, Ассессменту и % исполнения бюджета',
+            formula:`(${fmtScore(axScore)} + ${fmtScore(assessScore)} + ${fmtScore(budgetScore)}) / 3 = ${fmt(mid)}`,
+          });
+          breakdown.steps.push({
+            label:'Итог без штрафов',
+            formula:`(${fmt(mid)} + ${fmtScore(hrScore)} + ${fmtScore(prodScore)} + ${fmtScore(teamScore)}) / 4 = ${fmt(baseTotal)}`,
+          });
+          breakdown.context = 'Формула для роли «Директор Производства» (ФК)';
+        } else {
+          const mid = (axScore + assessScore) / 2;
+          baseTotal = (mid + hrScore + prodScore) / 3;
+          breakdown.steps.push({
+            label:'Среднее по Аксиологии и Ассессменту',
+            formula:`(${fmtScore(axScore)} + ${fmtScore(assessScore)}) / 2 = ${fmt(mid)}`,
+          });
+          breakdown.steps.push({
+            label:'Итог без штрафов',
+            formula:`(${fmt(mid)} + ${fmtScore(hrScore)} + ${fmtScore(prodScore)}) / 3 = ${fmt(baseTotal)}`,
+          });
+          breakdown.context = 'Формула для производственных ролей ФК';
+        }
+      } else {
+        baseTotal = (axScore + hrScore + assessScore) / 3;
+        breakdown.steps.push({
+          label:'Среднее по показателям лидерства',
+          formula:`(${fmtScore(axScore)} + ${fmtScore(hrScore)} + ${fmtScore(assessScore)}) / 3 = ${fmt(baseTotal)}`,
+        });
+        breakdown.context = 'Формула для выбранного БЮ';
+      }
+
       const violInputs = document.querySelectorAll('[data-viol-idx]');
       let penalty = 0;
+      const penaltyItems = [];
       (VIOLATIONS_DEF[bu]||[]).forEach((v, i)=>{
         const inp = Array.from(violInputs).find(n=>Number(n.dataset.violIdx)===i);
-        const cnt = num(inp?.value)||0;
-        penalty += cnt * v.weight;
+        const cntRaw = inp ? num(inp.value) : null;
+        const cnt = Number.isFinite(cntRaw) ? cntRaw : 0;
+        if(cnt>0){
+          const subtotal = cnt * v.weight;
+          penaltyItems.push({name:v.name, count:cnt, weight:v.weight, subtotal});
+          penalty += subtotal;
+        } else if(cnt===0){
+          penalty += 0;
+        }
       });
 
-      if(bu==='ФК' && FC_ROLES.includes(role)){
-        const prod = scoreProductivity(num($('#productivity').value));
-        const teamRaw = num($('#teamIndex').value);
-        const team = Number.isFinite(teamRaw) ? teamRaw : 0;
-        if(role==='Директор Производства'){
-          const budg = scoreBudgetExec(num($('#budgetExec').value));
-          const mid = (ax + as + budg) / 3; // среднее Аксиология, Ассессмент и % исполнения бюджета
-          const total = (mid + hr + prod + team) / 4;
-          return {score: total - penalty, penalty};
-        }
-        const mid = (ax + as) / 2; // среднее Аксиология и Ассессмент
-        const total = (mid + hr + prod) / 3;
-        return {score: total - penalty, penalty};
-      }
-      const base = (ax + hr + as) / 3;
-      return {score: base - penalty, penalty};
+      breakdown.penalty = penalty;
+      breakdown.penalties = penaltyItems;
+      breakdown.penaltyFormula = penaltyItems.length
+        ? penaltyItems.map(p=>`${fmtMult(p.count)}×${fmtMult(p.weight)}`).join(' + ')
+        : '0';
+      breakdown.prePenalty = baseTotal;
+      breakdown.final = baseTotal - penalty;
+
+      return {score: baseTotal - penalty, penalty, breakdown};
     }
 
     // ===== Кластеры =====
-    function classifyBK(role, bizScore, leadScore){
+    const CLASSIFICATION_RULES = {
+      group1: {
+        title: 'Пороги для ролей ОД / РУ / РМ',
+        biz: [
+          {label:'C', text:'≤ 2.29', check:(x)=>x<=2.29},
+          {label:'B', text:'> 2.29 и ≤ 2.39', check:(x)=>x>2.29 && x<=2.39},
+          {label:'A', text:'> 2.39', check:(x)=>x>2.39},
+        ],
+        lead: [
+          {label:'C', text:'≤ 2.39', check:(x)=>x<=2.39},
+          {label:'B', text:'> 2.39 и ≤ 2.59', check:(x)=>x>2.39 && x<=2.59},
+          {label:'A', text:'> 2.59', check:(x)=>x>2.59},
+        ],
+      },
+      group2: {
+        title: 'Пороги для директоров и заместителей',
+        biz: [
+          {label:'C', text:'≤ 1.89', check:(x)=>x<=1.89},
+          {label:'B', text:'> 1.89 и ≤ 2.59', check:(x)=>x>1.89 && x<=2.59},
+          {label:'A', text:'> 2.59', check:(x)=>x>2.59},
+        ],
+        lead: [
+          {label:'C', text:'≤ 1.89', check:(x)=>x<=1.89},
+          {label:'B', text:'> 1.89 и ≤ 2.59', check:(x)=>x>1.89 && x<=2.59},
+          {label:'A', text:'> 2.59', check:(x)=>x>2.59},
+        ],
+      },
+      fcDirector: {
+        title: 'Пороги для роли «Директор Производства» (ФК)',
+        biz: [
+          {label:'C', text:'≤ 2.29', check:(x)=>x<=2.29},
+          {label:'B', text:'> 2.29 и ≤ 2.39', check:(x)=>x>2.29 && x<=2.39},
+          {label:'A', text:'> 2.39', check:(x)=>x>2.39},
+        ],
+        lead: [
+          {label:'C', text:'≤ 1.89', check:(x)=>x<=1.89},
+          {label:'B', text:'> 1.89 и ≤ 2.59', check:(x)=>x>1.89 && x<=2.59},
+          {label:'A', text:'> 2.59', check:(x)=>x>2.59},
+        ],
+      },
+      fcRoles: {
+        title: 'Пороги для производственных ролей ФК',
+        biz: [
+          {label:'C', text:'≤ 1.90', check:(x)=>x<=1.9},
+          {label:'B', text:'> 1.90 и ≤ 2.60', check:(x)=>x>1.9 && x<=2.6},
+          {label:'A', text:'> 2.60', check:(x)=>x>2.6},
+        ],
+        lead: [
+          {label:'C', text:'≤ 1.90', check:(x)=>x<=1.9},
+          {label:'B', text:'> 1.90 и ≤ 2.60', check:(x)=>x>1.9 && x<=2.6},
+          {label:'A', text:'> 2.60', check:(x)=>x>2.6},
+        ],
+      },
+    };
+
+    function classifyWithRules(score, rules){
+      const mapped = rules.map(r=>({label:r.label, text:r.text}));
+      if(!Number.isFinite(score)){
+        return {label:'—', score:null, rules:mapped, matched:null};
+      }
+      const idx = rules.findIndex(r=>r.check(score));
+      if(idx>=0){
+        mapped[idx].isMatch = true;
+        return {label:rules[idx].label, score, rules:mapped, matched:mapped[idx]};
+      }
+      return {label:'—', score, rules:mapped, matched:null};
+    }
+
+    function buildClassificationResult(ruleSet, bizScore, leadScore){
+      const bizInfo = classifyWithRules(bizScore, ruleSet.biz);
+      const leadInfo = classifyWithRules(leadScore, ruleSet.lead);
+      return {
+        clusterBiz: bizInfo.label,
+        clusterLead: leadInfo.label,
+        explainBiz: bizInfo,
+        explainLead: leadInfo,
+        ruleTitle: ruleSet.title,
+        hasRules: true,
+      };
+    }
+
+    function classifyByRole(role, bizScore, leadScore){
       const group1 = ['ОД','РУ','РМ'];
       const group2 = ['Директор','Зам.Директора','Зам. Директора по направлению Кафе','Зам. Директора по направлению розницы'];
-      let clusterBiz='—', clusterLead='—';
       if(group1.includes(role)){
-        if(bizScore<=2.29) clusterBiz='C'; else if(bizScore>2.29 && bizScore<=2.39) clusterBiz='B'; else if(bizScore>2.39) clusterBiz='A';
-        if(leadScore<=2.39) clusterLead='C'; else if(leadScore>2.39 && leadScore<=2.59) clusterLead='B'; else if(leadScore>2.59) clusterLead='A';
-      } else if(group2.includes(role)){
-        if(bizScore<=1.89) clusterBiz='C'; else if(bizScore>1.89 && bizScore<=2.59) clusterBiz='B'; else if(bizScore>2.59) clusterBiz='A';
-        if(leadScore<=1.89) clusterLead='C'; else if(leadScore>1.89 && leadScore<=2.59) clusterLead='B'; else if(leadScore>2.59) clusterLead='A';
+        return buildClassificationResult(CLASSIFICATION_RULES.group1, bizScore, leadScore);
       }
-      return {clusterBiz, clusterLead};
+      if(group2.includes(role)){
+        return buildClassificationResult(CLASSIFICATION_RULES.group2, bizScore, leadScore);
+      }
+      return {
+        clusterBiz:'—', clusterLead:'—',
+        explainBiz:{label:'—', score:bizScore, rules:[], matched:null},
+        explainLead:{label:'—', score:leadScore, rules:[], matched:null},
+        ruleTitle:'Для этой должности пороги кластеров не заданы',
+        hasRules:false,
+      };
     }
+
     function classifyFC(role, bizScore, leadScore){
-      let clusterBiz, clusterLead;
       if(role==='Директор Производства'){
-        if(bizScore<=2.29) clusterBiz='C'; else if(bizScore<=2.39) clusterBiz='B'; else clusterBiz='A';
-        if(leadScore<=1.89) clusterLead='C'; else if(leadScore<=2.59) clusterLead='B'; else clusterLead='A';
-      } else {
-        if(bizScore<=1.9) clusterBiz='C'; else if(bizScore<=2.6) clusterBiz='B'; else clusterBiz='A';
-        if(leadScore<=1.9) clusterLead='C'; else if(leadScore<=2.6) clusterLead='B'; else clusterLead='A';
+        return buildClassificationResult(CLASSIFICATION_RULES.fcDirector, bizScore, leadScore);
       }
-      return {clusterBiz, clusterLead};
+      return buildClassificationResult(CLASSIFICATION_RULES.fcRoles, bizScore, leadScore);
+    }
+
+    function renderMetricsList(metrics){
+      if(!metrics || !metrics.length) return '<p class="calc-empty">Нет данных для расчёта.</p>';
+      return `<ul class="calc-list">${metrics.map(m=>{
+        const scale = m.scale ? `<div class="calc-note">${m.scale}</div>` : '';
+        const note = m.note ? `<div class="calc-note">${m.note}</div>` : '';
+        return `<li><strong>${m.label}</strong><div>${m.value || '—'} → ${fmtScore(m.score)} балл(ов)</div>${scale}${note}</li>`;
+      }).join('')}</ul>`;
+    }
+
+    function renderBusinessDetails(data){
+      const el = document.getElementById('bizDetails');
+      if(!el) return;
+      let html = '<h5>Эффективность на бизнес</h5>';
+      if(data && data.context){ html += `<p class="calc-note">${data.context}</p>`; }
+      const metrics = (data && data.metrics) ? data.metrics : [];
+      html += renderMetricsList(metrics);
+      if(data && data.formula){
+        html += `<p class="calc-formula">Среднее = ${data.formula}</p>`;
+      }
+      if(data && data.note){
+        html += `<p class="calc-note">${data.note}</p>`;
+      }
+      el.innerHTML = html;
+    }
+
+    function renderLeadershipDetails(data){
+      const el = document.getElementById('leadDetails');
+      if(!el) return;
+      let html = '<h5>Лидерство</h5>';
+      if(data && data.context) html += `<p class="calc-note">${data.context}</p>`;
+      html += renderMetricsList((data && data.metrics) ? data.metrics : []);
+      ((data && data.steps) ? data.steps : []).forEach(step=>{
+        html += `<p class="calc-formula">${step.label}: ${step.formula}</p>`;
+      });
+      if(data && Number.isFinite(data.prePenalty) && Number.isFinite(data.penalty) && Number.isFinite(data.final)){
+        html += `<p class="calc-formula">Итог лидерства = ${fmt(data.prePenalty)} − ${fmt(data.penalty)} = ${fmt(data.final)}</p>`;
+        html += '<p class="calc-note">Из итоговой оценки вычитаются штрафы за нарушения.</p>';
+      }
+      el.innerHTML = html;
+    }
+
+    function renderPenaltyDetails(data){
+      const el = document.getElementById('penaltyDetails');
+      if(!el) return;
+      let html = '<h5>Штрафы за нарушения</h5>';
+      const penalties = (data && data.penalties) ? data.penalties : [];
+      if(!penalties.length){
+        html += '<p class="calc-empty">Нарушений не указано — штрафы отсутствуют.</p>';
+        html += `<p class="calc-formula">Суммарный штраф = 0</p>`;
+      } else {
+        html += '<ul class="calc-list">';
+        penalties.forEach(p=>{
+          html += `<li><strong>${p.name}</strong><div>${fmtMult(p.count)} × ${fmtMult(p.weight)} = ${fmt(p.subtotal)}</div></li>`;
+        });
+        html += '</ul>';
+        const penaltyFormula = (data && data.penaltyFormula) ? data.penaltyFormula : '';
+        const penaltyValue = (data && Number.isFinite(data.penalty)) ? data.penalty : 0;
+        html += `<p class="calc-formula">Суммарный штраф = ${penaltyFormula} = ${fmt(penaltyValue)}</p>`;
+      }
+      el.innerHTML = html;
+    }
+
+    function renderBonusDetails(classification, bonusInfo, bizScore, leadScore){
+      const el = document.getElementById('bonusDetails');
+      if(!el) return;
+      let html = '<h5>Кластеры и премия</h5>';
+      if(!classification || !classification.hasRules){
+        html += '<p class="calc-empty">Для выбранной должности пороги кластеров не заданы. Премия не рассчитывается.</p>';
+        el.innerHTML = html;
+        return;
+      }
+      if(classification.ruleTitle){
+        html += `<p class="calc-note">${classification.ruleTitle}</p>`;
+      }
+      const bizScoreText = Number.isFinite(bizScore) ? fmt(bizScore) : '—';
+      const leadScoreText = Number.isFinite(leadScore) ? fmt(leadScore) : '—';
+      const bizInfo = classification ? classification.explainBiz : null;
+      const leadInfo = classification ? classification.explainLead : null;
+      const bizMatch = bizInfo && bizInfo.matched ? bizInfo.matched.text : '';
+      const leadMatch = leadInfo && leadInfo.matched ? leadInfo.matched.text : '';
+      html += `<p>Эффективность: ${bizScoreText} → <span class="calc-highlight">${classification.clusterBiz}</span>${bizMatch ? ` (диапазон ${bizMatch})` : ''}</p>`;
+      const bizRules = (bizInfo && Array.isArray(bizInfo.rules)) ? bizInfo.rules : [];
+      if(bizRules.length){
+        html += '<ul class="calc-rules">';
+        bizRules.forEach(rule=>{
+          html += `<li class="${rule.isMatch?'is-match':''}">${rule.label}: ${rule.text}</li>`;
+        });
+        html += '</ul>';
+      }
+      html += `<p>Лидерство: ${leadScoreText} → <span class="calc-highlight">${classification.clusterLead}</span>${leadMatch ? ` (диапазон ${leadMatch})` : ''}</p>`;
+      const leadRules = (leadInfo && Array.isArray(leadInfo.rules)) ? leadInfo.rules : [];
+      if(leadRules.length){
+        html += '<ul class="calc-rules">';
+        leadRules.forEach(rule=>{
+          html += `<li class="${rule.isMatch?'is-match':''}">${rule.label}: ${rule.text}</li>`;
+        });
+        html += '</ul>';
+      }
+      if(classification.clusterBiz==='—' || classification.clusterLead==='—'){
+        html += '<p class="calc-empty">Недостаточно данных для определения премии.</p>';
+        el.innerHTML = html;
+        return;
+      }
+      const bonusValue = (bonusInfo && typeof bonusInfo.bonus !== 'undefined') ? bonusInfo.bonus : 0;
+      const bonusFormatted = bonusValue.toLocaleString('ru-RU');
+      html += `<p class="calc-formula">Комбинация ${classification.clusterBiz} + ${classification.clusterLead} ⇒ ${bonusFormatted} ₽</p>`;
+      if(bonusInfo && bonusInfo.label && bonusInfo.label!=='—'){
+        html += `<p class="calc-note">${bonusInfo.label}</p>`;
+      }
+      el.innerHTML = html;
     }
 
     // ===== Премии =====
@@ -701,7 +1051,8 @@ html, body { background-clip: border-box; }
         fields: Object.fromEntries(getAllFields().map(i=>[i.id, i.value])),
         violations: getViolationInputs().map(i=>({idx:i.dataset.violIdx, val:i.value})),
         resultsVisible: !document.getElementById('results').classList.contains('hidden'),
-        extraVisible: !document.getElementById('bk-extra').classList.contains('hidden')
+        extraVisible: !document.getElementById('bk-extra').classList.contains('hidden'),
+        calcDetailsVisible: !document.getElementById('calc-details').classList.contains('hidden')
       };
       return data;
     }
@@ -724,6 +1075,7 @@ html, body { background-clip: border-box; }
         }
         if(data.resultsVisible) document.getElementById('results').classList.remove('hidden');
         if(data.extraVisible) document.getElementById('bk-extra').classList.remove('hidden');
+        if(data.calcDetailsVisible) document.getElementById('calc-details').classList.remove('hidden');
 
         ensureViolationDefaults();
       });
@@ -811,7 +1163,9 @@ html, body { background-clip: border-box; }
       const calcBtn = document.getElementById('calc');
       calcBtn.addEventListener('click', (e)=>{
         if(!validateAll()){
-          e.stopImmediatePropagation?.();
+          if(typeof e.stopImmediatePropagation==='function'){
+            e.stopImmediatePropagation();
+          }
           e.stopPropagation();
           e.preventDefault();
           alert('Проверьте ввод: есть ошибки в полях.');
@@ -919,32 +1273,39 @@ html, body { background-clip: border-box; }
       const bu = $('#bu').value; const role = $('#role').value;
       if(!bu || !role){ alert('Пожалуйста, выберите Бизнес-Юнит и Должность.'); return; }
 
-      const biz = computeBusinessScore(bu);
-      const {score:lead, penalty} = computeLeadershipScore();
+      const bizRes = computeBusinessScore(bu);
+      const leadRes = computeLeadershipScore();
 
-      $('#businessScore').textContent = fmt(biz);
-      $('#leadershipScore').textContent = fmt(lead);
-      $('#penaltySum').textContent = '-' + fmt(penalty);
+      $('#businessScore').textContent = fmt(bizRes.score);
+      $('#leadershipScore').textContent = fmt(leadRes.score);
+      $('#penaltySum').textContent = '-' + fmt(leadRes.penalty);
       $('#results').classList.remove('hidden');
 
+      $('#calc-details').classList.remove('hidden');
+      renderBusinessDetails(bizRes.breakdown);
+      renderLeadershipDetails(leadRes.breakdown);
+      renderPenaltyDetails(leadRes.breakdown);
+
       const extra = $('#bk-extra');
-      if(bu==='БК'){
-        const {clusterBiz, clusterLead} = classifyBK(role, biz, lead);
-        $('#clusterBiz').textContent = clusterBiz;
-        $('#clusterLead').textContent = clusterLead;
-        const {bonus,label} = bonusBK(clusterBiz, clusterLead);
-        $('#bonus').textContent = bonus.toLocaleString('ru-RU');
-        $('#finalLabel').textContent = label;
-        extra.classList.remove('hidden');
-      } else if(bu==='ФК' && FC_ROLES.includes(role)){
-        const {clusterBiz, clusterLead} = classifyFC(role, biz, lead);
-        $('#clusterBiz').textContent = clusterBiz;
-        $('#clusterLead').textContent = clusterLead;
-        const bl = bonusBK(clusterBiz, clusterLead);
-        $('#bonus').textContent = bl.bonus.toLocaleString('ru-RU');
-        $('#finalLabel').textContent = bl.label;
+      const isFCSpecial = (bu==='ФК' && FC_ROLES.includes(role));
+      const classification = isFCSpecial
+        ? classifyFC(role, bizRes.score, leadRes.score)
+        : classifyByRole(role, bizRes.score, leadRes.score);
+      const bonusInfo = bonusBK(classification.clusterBiz, classification.clusterLead);
+
+      renderBonusDetails(classification, bonusInfo, bizRes.score, leadRes.score);
+
+      if(classification.hasRules && classification.clusterBiz !== '—' && classification.clusterLead !== '—'){
+        $('#clusterBiz').textContent = classification.clusterBiz;
+        $('#clusterLead').textContent = classification.clusterLead;
+        $('#bonus').textContent = bonusInfo.bonus.toLocaleString('ru-RU');
+        $('#finalLabel').textContent = bonusInfo.label;
         extra.classList.remove('hidden');
       } else {
+        $('#clusterBiz').textContent = '—';
+        $('#clusterLead').textContent = '—';
+        $('#bonus').textContent = '—';
+        $('#finalLabel').textContent = '—';
         extra.classList.add('hidden');
       }
     });
