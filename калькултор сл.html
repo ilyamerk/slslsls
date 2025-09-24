@@ -809,13 +809,14 @@ html, body { background-clip: border-box; }
       if(group2.includes(role)){
         return buildClassificationResult(CLASSIFICATION_RULES.group2, bizScore, leadScore);
       }
-      return {
-        clusterBiz:'—', clusterLead:'—',
-        explainBiz:{label:'—', score:bizScore, rules:[], matched:null},
-        explainLead:{label:'—', score:leadScore, rules:[], matched:null},
-        ruleTitle:'Для этой должности пороги кластеров не заданы',
-        hasRules:false,
-      };
+
+      const normalized = (role || '').toLowerCase();
+      const isDirectorLike = normalized.includes('директор');
+      if(isDirectorLike){
+        return buildClassificationResult(CLASSIFICATION_RULES.group2, bizScore, leadScore);
+      }
+
+      return buildClassificationResult(CLASSIFICATION_RULES.group1, bizScore, leadScore);
     }
 
     function classifyFC(role, bizScore, leadScore){
@@ -932,7 +933,7 @@ html, body { background-clip: border-box; }
       const bonusFormatted = bonusValue.toLocaleString('ru-RU');
       html += `<p class="calc-formula">Комбинация ${classification.clusterBiz} + ${classification.clusterLead} ⇒ ${bonusFormatted} ₽</p>`;
       if(bonusInfo && bonusInfo.label && bonusInfo.label!=='—'){
-        html += `<p class="calc-note">${bonusInfo.label}</p>`;
+        html += `<p class="calc-note">Итоговая оценка: ${bonusInfo.label}</p>`;
       }
       el.innerHTML = html;
     }
@@ -1295,11 +1296,14 @@ html, body { background-clip: border-box; }
 
       renderBonusDetails(classification, bonusInfo, bizRes.score, leadRes.score);
 
-      if(classification.hasRules && classification.clusterBiz !== '—' && classification.clusterLead !== '—'){
-        $('#clusterBiz').textContent = classification.clusterBiz;
-        $('#clusterLead').textContent = classification.clusterLead;
-        $('#bonus').textContent = bonusInfo.bonus.toLocaleString('ru-RU');
-        $('#finalLabel').textContent = bonusInfo.label;
+      if(classification.hasRules){
+        const hasClusters = (classification.clusterBiz !== '—' && classification.clusterLead !== '—');
+        $('#clusterBiz').textContent = hasClusters ? classification.clusterBiz : '—';
+        $('#clusterLead').textContent = hasClusters ? classification.clusterLead : '—';
+        $('#bonus').textContent = hasClusters ? bonusInfo.bonus.toLocaleString('ru-RU') : '—';
+        $('#finalLabel').textContent = hasClusters && bonusInfo.label && bonusInfo.label!=='—'
+          ? `Итоговая оценка: ${bonusInfo.label}`
+          : '—';
         extra.classList.remove('hidden');
       } else {
         $('#clusterBiz').textContent = '—';
