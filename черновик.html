@@ -278,6 +278,7 @@ html, body { background-clip: border-box; }
             <option>РУ</option>
             <option>РМ</option>
             <option>Директор</option>
+            <option>ТУ</option>
             <option>Зам.Директора</option>
             <option>Зам. Директора по направлению Кафе</option>
             <option>Зам. Директора по направлению розницы</option>
@@ -484,6 +485,12 @@ html, body { background-clip: border-box; }
       'Заведующий кондитерским и пекарским производством','Заведующий цехом','Начальник цеха',
       'Руководитель мясного производства','Руководитель хлебопекарного производства','Начальник мясного цеха'
     ];
+    const DIRECTOR_ROLES_WITH_TEAM = ['Директор','ТУ'];
+    const DEPUTY_ROLES = [
+      'Зам.Директора',
+      'Зам. Директора по направлению Кафе',
+      'Зам. Директора по направлению розницы',
+    ];
     function addFCRolesIfNeeded(){
       const selRole = document.getElementById('role');
       const bu = document.getElementById('bu').value;
@@ -677,6 +684,41 @@ html, body { background-clip: border-box; }
           });
           breakdown.context = 'Формула для производственных ролей ФК';
         }
+      } else if(DIRECTOR_ROLES_WITH_TEAM.includes(role)){
+        const teamRaw = num($('#teamIndex').value);
+        const teamScore = Number.isFinite(teamRaw) ? teamRaw : 0;
+        const teamValue = Number.isFinite(teamRaw) ? fmtValue(teamRaw) : '— (использовано 0)';
+        addMetric({
+          label:'Балл (индекс команды)',
+          valueDisplay: teamValue,
+          score: teamScore,
+          scale: SCALE_TEXT.teamIndex,
+          note: Number.isFinite(teamRaw) ? '' : 'Поле пустое — в расчёте используется 0.',
+        });
+
+        const mid = (axScore + assessScore) / 2;
+        baseTotal = (mid + hrScore + teamScore) / 3;
+        breakdown.steps.push({
+          label:'Среднее по Аксиологии и Ассессменту',
+          formula:`(${fmtScore(axScore)} + ${fmtScore(assessScore)}) / 2 = ${fmt(mid)}`,
+        });
+        breakdown.steps.push({
+          label:'Итог без штрафов',
+          formula:`(${fmt(mid)} + ${fmtScore(hrScore)} + ${fmtScore(teamScore)}) / 3 = ${fmt(baseTotal)}`,
+        });
+        breakdown.context = 'Формула для должностей «Директор» и «ТУ»';
+      } else if(DEPUTY_ROLES.includes(role)){
+        const mid = (axScore + assessScore) / 2;
+        baseTotal = (mid + hrScore) / 2;
+        breakdown.steps.push({
+          label:'Среднее по Аксиологии и Ассессменту',
+          formula:`(${fmtScore(axScore)} + ${fmtScore(assessScore)}) / 2 = ${fmt(mid)}`,
+        });
+        breakdown.steps.push({
+          label:'Итог без штрафов',
+          formula:`(${fmt(mid)} + ${fmtScore(hrScore)}) / 2 = ${fmt(baseTotal)}`,
+        });
+        breakdown.context = 'Формула для заместителей директора';
       } else {
         baseTotal = (axScore + hrScore + assessScore) / 3;
         breakdown.steps.push({
@@ -797,7 +839,7 @@ html, body { background-clip: border-box; }
 
     function classifyByRole(role, bizScore, leadScore){
       const group1 = ['ОД','РУ','РМ'];
-      const group2 = ['Директор','Зам.Директора','Зам. Директора по направлению Кафе','Зам. Директора по направлению розницы'];
+      const group2 = [...DIRECTOR_ROLES_WITH_TEAM, ...DEPUTY_ROLES];
       if(group1.includes(role)){
         return buildClassificationResult(CLASSIFICATION_RULES.group1, bizScore, leadScore);
       }
@@ -955,7 +997,8 @@ html, body { background-clip: border-box; }
       }
       $('#prodWrap').style.display = (bu==='ФК' && FC_ROLES.includes(role)) ? '' : 'none';
       $('#budgetWrap').style.display = (bu==='ФК' && role==='Директор Производства') ? '' : 'none';
-      $('#teamIndexWrap').style.display = (bu==='ФК' && role==='Директор Производства') ? '' : 'none';
+      const showTeamIndex = (bu==='ФК' && role==='Директор Производства') || DIRECTOR_ROLES_WITH_TEAM.includes(role);
+      $('#teamIndexWrap').style.display = showTeamIndex ? '' : 'none';
     }
 
     // ===== Значения нарушений по умолчанию =====
