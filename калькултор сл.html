@@ -562,7 +562,7 @@ html, body { background-clip: border-box; }
     }
 
     // ===== Кластеры =====
-    function classifyBK(role, bizScore, leadScore){
+    function classifyByRole(role, bizScore, leadScore){
       const group1 = ['ОД','РУ','РМ'];
       const group2 = ['Директор','Зам.Директора','Зам. Директора по направлению Кафе','Зам. Директора по направлению розницы'];
       let clusterBiz='—', clusterLead='—';
@@ -928,23 +928,23 @@ html, body { background-clip: border-box; }
       $('#results').classList.remove('hidden');
 
       const extra = $('#bk-extra');
-      if(bu==='БК'){
-        const {clusterBiz, clusterLead} = classifyBK(role, biz, lead);
+      const isFCSpecial = (bu==='ФК' && FC_ROLES.includes(role));
+      const {clusterBiz, clusterLead} = isFCSpecial
+        ? classifyFC(role, biz, lead)
+        : classifyByRole(role, biz, lead);
+
+      if(clusterBiz !== '—' && clusterLead !== '—'){
         $('#clusterBiz').textContent = clusterBiz;
         $('#clusterLead').textContent = clusterLead;
         const {bonus,label} = bonusBK(clusterBiz, clusterLead);
         $('#bonus').textContent = bonus.toLocaleString('ru-RU');
         $('#finalLabel').textContent = label;
         extra.classList.remove('hidden');
-      } else if(bu==='ФК' && FC_ROLES.includes(role)){
-        const {clusterBiz, clusterLead} = classifyFC(role, biz, lead);
-        $('#clusterBiz').textContent = clusterBiz;
-        $('#clusterLead').textContent = clusterLead;
-        const bl = bonusBK(clusterBiz, clusterLead);
-        $('#bonus').textContent = bl.bonus.toLocaleString('ru-RU');
-        $('#finalLabel').textContent = bl.label;
-        extra.classList.remove('hidden');
       } else {
+        $('#clusterBiz').textContent = '—';
+        $('#clusterLead').textContent = '—';
+        $('#bonus').textContent = '—';
+        $('#finalLabel').textContent = '—';
         extra.classList.add('hidden');
       }
     });
