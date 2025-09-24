@@ -749,10 +749,16 @@ html, body { background-clip: border-box; }
       breakdown.penaltyFormula = penaltyItems.length
         ? penaltyItems.map(p=>`${fmtMult(p.count)}×${fmtMult(p.weight)}`).join(' + ')
         : '0';
-      breakdown.prePenalty = baseTotal;
-      breakdown.final = baseTotal - penalty;
 
-      return {score: baseTotal - penalty, penalty, breakdown};
+      const rawFinal = baseTotal - penalty;
+      const finalScore = Math.max(rawFinal, 0);
+
+      breakdown.prePenalty = baseTotal;
+      breakdown.finalRaw = rawFinal;
+      breakdown.final = finalScore;
+      breakdown.finalCapped = Number.isFinite(rawFinal) && rawFinal < 0;
+
+      return {score: finalScore, penalty, breakdown};
     }
 
     // ===== Кластеры =====
@@ -896,8 +902,16 @@ html, body { background-clip: border-box; }
         html += `<p class="calc-formula">${step.label}: ${step.formula}</p>`;
       });
       if(Number.isFinite(data?.prePenalty) && Number.isFinite(data?.penalty) && Number.isFinite(data?.final)){
-        html += `<p class="calc-formula">Итог лидерства = ${fmt(data.prePenalty)} − ${fmt(data.penalty)} = ${fmt(data.final)}</p>`;
+        const isCapped = Boolean(data?.finalCapped);
+        const baseFormula = isCapped
+          ? `max(0, ${fmt(data.prePenalty)} − ${fmt(data.penalty)})`
+          : `${fmt(data.prePenalty)} − ${fmt(data.penalty)}`;
+        html += `<p class="calc-formula">Итог лидерства = ${baseFormula} = ${fmt(data.final)}</p>`;
         html += '<p class="calc-note">Из итоговой оценки вычитаются штрафы за нарушения.</p>';
+        if(isCapped){
+          const rawText = Number.isFinite(data?.finalRaw) ? ` (без ограничения получилось ${fmt(data.finalRaw)})` : '';
+          html += `<p class="calc-note">Значение не может быть меньше 0, поэтому итоговое лидерство установлено в 0${rawText}.</p>`;
+        }
       }
       el.innerHTML = html;
     }
