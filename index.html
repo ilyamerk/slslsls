@@ -251,6 +251,22 @@ html, body { background-clip: border-box; }
 .is-embed body{ margin:0; }
 .is-embed .site-header{ display:none; }
 .is-embed .container{ padding-top: 8px; padding-bottom: 90px; }
+/* когда страница во фрейме — контент на всю ширину */
+  html.is-embed, body { margin:0; overflow-x:hidden; }
+
+  html.is-embed .container,
+  html.is-embed [class*="container"],
+  html.is-embed [class*="wrap"],
+  html.is-embed [class*="page"],
+  html.is-embed [class*="shell"],
+  html.is-embed [class*="card"] {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;   /* убираем скругления по краям, чтобы не было «карточки» */
+    padding-left: clamp(12px, 2vw, 24px);
+    padding-right: clamp(12px, 2vw, 24px);
+  }
 
 </style>
 </head>
