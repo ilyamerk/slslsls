@@ -339,6 +339,21 @@ html.is-embed [class*="card"]{
           <div id="assessHint" class="muted small" aria-live="polite">Допустимый диапазон: 0–3 (включительно)</div>
         </div>
 
+        <!-- Индекс команды (для ОД / РУ / РМ) -->
+        <div class="kpi" id="teamCalcWrap" style="display:none">
+          <label>Индекс команды</label>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+            <div>
+              <label for="teamBizIdx" class="muted small">Индекс бизнеса</label>
+              <input type="number" id="teamBizIdx" placeholder="например, 2.5" min="0" max="3" step="0.01" />
+            </div>
+            <div>
+              <label for="teamLeadIdx" class="muted small">Индекс Лидерства</label>
+              <input type="number" id="teamLeadIdx" placeholder="например, 2.5" min="0" max="3" step="0.01" />
+            </div>
+          </div>
+          <div class="muted small">Индекс команды = (Индекс бизнеса + Индекс Лидерства) / 2</div>
+        </div>
 
         <!-- Доп. для ФК -->
         <div class="kpi" id="prodWrap" style="display:none">
@@ -422,6 +437,7 @@ html.is-embed [class*="card"]{
       planProdFC: 'Шкала: <95 → 1; 95–98 → 2; >98 → 3',
       underloadFC: 'Шкала: >2 → 1; 1–2 → 2; <1 → 3',
       teamIndex: 'Используется введённый балл (0–3)',
+      teamCalc: '(Индекс бизнеса + Индекс Лидерства) / 2',
     };
 
     // ===== Custom Select (generic) =====
@@ -757,7 +773,34 @@ html.is-embed [class*="card"]{
     breakdown.context = 'Формула для должностей «Директор»';
   }
 
-} else if(DEPUTY_ROLES.includes(role)){
+} else if(['ОД','РУ','РМ'].includes(role)){
+        const bizIdxRaw = num($('#teamBizIdx').value);
+        const leadIdxRaw = num($('#teamLeadIdx').value);
+        const bizIdx = Number.isFinite(bizIdxRaw) ? bizIdxRaw : 0;
+        const leadIdx = Number.isFinite(leadIdxRaw) ? leadIdxRaw : 0;
+        const teamIdx = (bizIdx + leadIdx) / 2;
+
+        const bizIdxDisplay = Number.isFinite(bizIdxRaw) ? fmtMult(bizIdxRaw) : '—';
+        const leadIdxDisplay = Number.isFinite(leadIdxRaw) ? fmtMult(leadIdxRaw) : '—';
+        addMetric({
+          label:'Индекс команды',
+          valueDisplay: `Индекс бизнеса: ${bizIdxDisplay}; Индекс Лидерства: ${leadIdxDisplay}`,
+          score: teamIdx,
+          scale: SCALE_TEXT.teamCalc,
+          note: (Number.isFinite(bizIdxRaw) && Number.isFinite(leadIdxRaw)) ? '' : 'Пустые подполя считаются как 0.',
+        });
+
+        baseTotal = (axScore + hrScore + assessScore + teamIdx) / 4;
+        breakdown.steps.push({
+          label:'Индекс команды',
+          formula:`(${fmtMult(bizIdx)} + ${fmtMult(leadIdx)}) / 2 = ${fmt(teamIdx)}`,
+        });
+        breakdown.steps.push({
+          label:'Итог без штрафов',
+          formula:`(${fmtScore(axScore)} + ${fmtScore(hrScore)} + ${fmtScore(assessScore)} + ${fmt(teamIdx)}) / 4 = ${fmt(baseTotal)}`,
+        });
+        breakdown.context = 'Формула для должностей ОД / РУ / РМ (с учётом индекса команды)';
+      } else if(DEPUTY_ROLES.includes(role)){
         const mid = (axScore + assessScore) / 2;
         baseTotal = (mid + hrScore) / 2;
         breakdown.steps.push({
@@ -1058,6 +1101,8 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
       $('#budgetWrap').style.display = (bu==='ФК' && role==='Директор Производства') ? '' : 'none';
       const showTeamIndex = (bu==='ФК' && role==='Директор Производства') || (DIRECTOR_ROLES_WITH_TEAM.includes(role) && role!=='ТУ' && role!=='РУ' && role!=='РМ');
       $('#teamIndexWrap').style.display = showTeamIndex ? '' : 'none';
+      const showTeamCalc = ['ОД','РУ','РМ'].includes(role);
+      $('#teamCalcWrap').style.display = showTeamCalc ? '' : 'none';
     }
 
     // ===== Значения нарушений по умолчанию =====
@@ -1123,7 +1168,7 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
 
     // Registry helpers
     function getAllFields(){
-      const fields = ['#idxQuality','#idxTO','#idxMP','#axio','#hr','#assess','#productivity','#budgetExec','#teamIndex'];
+      const fields = ['#idxQuality','#idxTO','#idxMP','#axio','#hr','#assess','#productivity','#budgetExec','#teamIndex','#teamBizIdx','#teamLeadIdx'];
       return fields.map(s=>document.querySelector(s)).filter(Boolean);
     }
     function getViolationInputs(){
@@ -1228,6 +1273,9 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
       } else if(id==='teamIndex'){
         ok = VALID.assess(valRaw);
         if(!ok) text = 'Балл индекса команды должен быть целым числом 0–3';
+      } else if(id==='teamBizIdx' || id==='teamLeadIdx'){
+        ok = VALID.percent(valRaw);
+        if(!ok) text = 'Введите число ≥ 0';
       } else if(el.hasAttribute('data-viol-idx')){
         ok = VALID.positiveNumber(valRaw);
         if(!ok) text = 'Заполните поле (число ≥ 0)';
@@ -1287,6 +1335,13 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
       if(teamWrap && teamWrap.style.display !== 'none'){
         const el = document.getElementById('teamIndex');
         if(el && (el.value==='' || el.value==null)) missing.push(el);
+      }
+      const teamCalcWrap = document.getElementById('teamCalcWrap');
+      if(teamCalcWrap && teamCalcWrap.style.display !== 'none'){
+        ['teamBizIdx','teamLeadIdx'].forEach(fid=>{
+          const el = document.getElementById(fid);
+          if(el && (el.value==='' || el.value==null)) missing.push(el);
+        });
       }
       return missing;
     }
@@ -1373,6 +1428,8 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
         case 'productivity': score = scoreProductivity(v); label='Производительность'; break;
         case 'budgetExec': score = scoreBudgetExec(v); label='% исполнения бюджета'; break;
         case 'teamIndex': score = Number.isFinite(v) ? v : null; label='Балл (индекс команды)'; break;
+        case 'teamBizIdx': score = Number.isFinite(v) ? v : null; label='Индекс бизнеса'; break;
+        case 'teamLeadIdx': score = Number.isFinite(v) ? v : null; label='Индекс Лидерства'; break;
       }
       if(score==null) return '';
       return `Баллы за «${label}»: ${fmt(score)}/3`;
