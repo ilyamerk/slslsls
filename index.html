@@ -1615,5 +1615,20 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
   }catch(e){}
 })();
 </script>
+<script>
+  // Функция, которая измеряет высоту и отправляет ее родительскому окну
+  function sendHeightToParent() {
+    const height = document.documentElement.scrollHeight;
+    // Отправляем сообщение наверх
+    window.parent.postMessage({ frameHeight: height }, '*');
+  }
+
+  // Отправляем высоту при первой загрузке страницы
+  window.addEventListener('load', sendHeightToParent);
+
+  // Используем ResizeObserver, чтобы следить за изменениями (например, когда открываются новые поля)
+  const observer = new ResizeObserver(sendHeightToParent);
+  observer.observe(document.body);
+</script>
 </body>
 </html>
