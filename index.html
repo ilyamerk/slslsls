@@ -855,58 +855,34 @@ html.is-embed [class*="card"]{
     }
 
     // ===== Кластеры =====
+    // Единые пороги кластеров для всех должностей:
+    // 0–1.9 → C, 2.0–2.6 → B, 2.7–3.0 → A
+    const UNIFIED_CLUSTER_THRESHOLDS = [
+      {label:'C', text:'≤ 1.90', check:(x)=>x<=1.9},
+      {label:'B', text:'> 1.90 и ≤ 2.60', check:(x)=>x>1.9 && x<=2.6},
+      {label:'A', text:'> 2.60', check:(x)=>x>2.6},
+    ];
+    const UNIFIED_RULE_TITLE = 'Единые пороги кластеров для всех должностей';
     const CLASSIFICATION_RULES = {
       group1: {
-        title: 'Пороги для ролей ОД / РУ / РМ',
-        biz: [
-          {label:'C', text:'≤ 2.29', check:(x)=>x<=2.29},
-          {label:'B', text:'> 2.29 и ≤ 2.39', check:(x)=>x>2.29 && x<=2.39},
-          {label:'A', text:'> 2.39', check:(x)=>x>2.39},
-        ],
-        lead: [
-          {label:'C', text:'≤ 2.39', check:(x)=>x<=2.39},
-          {label:'B', text:'> 2.39 и ≤ 2.59', check:(x)=>x>2.39 && x<=2.59},
-          {label:'A', text:'> 2.59', check:(x)=>x>2.59},
-        ],
+        title: UNIFIED_RULE_TITLE,
+        biz: UNIFIED_CLUSTER_THRESHOLDS,
+        lead: UNIFIED_CLUSTER_THRESHOLDS,
       },
       group2: {
-        title: 'Пороги для директоров и заместителей',
-        biz: [
-          {label:'C', text:'≤ 1.89', check:(x)=>x<=1.89},
-          {label:'B', text:'> 1.89 и ≤ 2.59', check:(x)=>x>1.89 && x<=2.59},
-          {label:'A', text:'> 2.59', check:(x)=>x>2.59},
-        ],
-        lead: [
-          {label:'C', text:'≤ 1.89', check:(x)=>x<=1.89},
-          {label:'B', text:'> 1.89 и ≤ 2.59', check:(x)=>x>1.89 && x<=2.59},
-          {label:'A', text:'> 2.59', check:(x)=>x>2.59},
-        ],
+        title: UNIFIED_RULE_TITLE,
+        biz: UNIFIED_CLUSTER_THRESHOLDS,
+        lead: UNIFIED_CLUSTER_THRESHOLDS,
       },
       fcDirector: {
-        title: 'Пороги для роли «Директор Производства» (ФК)',
-        biz: [
-          {label:'C', text:'≤ 2.29', check:(x)=>x<=2.29},
-          {label:'B', text:'> 2.29 и ≤ 2.39', check:(x)=>x>2.29 && x<=2.39},
-          {label:'A', text:'> 2.39', check:(x)=>x>2.39},
-        ],
-        lead: [
-          {label:'C', text:'≤ 1.89', check:(x)=>x<=1.89},
-          {label:'B', text:'> 1.89 и ≤ 2.59', check:(x)=>x>1.89 && x<=2.59},
-          {label:'A', text:'> 2.59', check:(x)=>x>2.59},
-        ],
+        title: UNIFIED_RULE_TITLE,
+        biz: UNIFIED_CLUSTER_THRESHOLDS,
+        lead: UNIFIED_CLUSTER_THRESHOLDS,
       },
       fcRoles: {
-        title: 'Пороги для производственных ролей ФК',
-        biz: [
-          {label:'C', text:'≤ 1.90', check:(x)=>x<=1.9},
-          {label:'B', text:'> 1.90 и ≤ 2.60', check:(x)=>x>1.9 && x<=2.6},
-          {label:'A', text:'> 2.60', check:(x)=>x>2.6},
-        ],
-        lead: [
-          {label:'C', text:'≤ 1.90', check:(x)=>x<=1.9},
-          {label:'B', text:'> 1.90 и ≤ 2.60', check:(x)=>x>1.9 && x<=2.6},
-          {label:'A', text:'> 2.60', check:(x)=>x>2.6},
-        ],
+        title: UNIFIED_RULE_TITLE,
+        biz: UNIFIED_CLUSTER_THRESHOLDS,
+        lead: UNIFIED_CLUSTER_THRESHOLDS,
       },
     };
 
