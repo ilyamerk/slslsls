@@ -3,28 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
+  <meta name="color-scheme" content="dark" />
   <title>Калькулятор эффективности и лидерства — Neo</title>
   <style>
-  /* Когда страница во фрейме — убираем большую «шапку».
-     Кнопка переключения темы через JS переезжает внутрь карточки
-     и там позиционируется абсолютно, чтобы стоять ровно на уровне заголовка. */
+  /* Во фрейме убираем большую «шапку» и добавляем отступ снизу,
+     чтобы кнопку Bitrix не накрывало */
 .is-embed .site-header{ display:none; }
 .is-embed .container{ padding-top: 12px; padding-bottom: 120px; }
-
-/* Плавающая кнопка темы внутри карточки (embed-режим) */
-.card .theme-toggle.is-floating{
-  position:absolute;
-  top:18px;
-  right:18px;
-  z-index:5;
-  box-shadow:0 8px 22px rgba(2,6,23,.30), 0 0 0 1px var(--border);
-}
-.is-embed .card > h1{ padding-right:60px; }
-@media (max-width: 860px){
-  .card .theme-toggle.is-floating{ top:14px; right:14px; }
-  .is-embed .card > h1{ padding-right:56px; }
-}
 
 /* На всякий: прозрачный фон, чтобы не было белых «полей» вокруг */
 html, body { background-clip: border-box; }
@@ -34,7 +19,7 @@ html, body { background-clip: border-box; }
        ========================== */
 
     :root{
-      color-scheme: light dark;
+      color-scheme: dark;
       --bg:#0a0c14; --bg-2:#111620; --elev:rgba(255,255,255,.04);
       --glass:rgba(255,255,255,.06); --glass-stroke:rgba(255,255,255,.14);
       --text:#f2f5fb; --text-strong:#ffffff; --muted:#b6bfd1;
@@ -43,16 +28,6 @@ html, body { background-clip: border-box; }
       --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
       --radius:18px; --shadow:0 20px 50px rgba(2,6,23,.45);
       --focus-ring:0 0 0 4px rgba(139,92,246,.30), 0 8px 24px rgba(34,211,238,.18);
-    }
-
-    @media (prefers-color-scheme: light){
-      :root{
-        --bg:#f4f6fb; --bg-2:#ffffff; --elev:rgba(15,23,42,.02);
-        --glass:rgba(255,255,255,.7); --glass-stroke:rgba(15,23,42,.10);
-        --text:#0b1220; --text-strong:#030712; --muted:#546072;
-        --card:#ffffff; --card-2:#f7f9fd; --border:rgba(15,23,42,.10);
-        --shadow:0 16px 40px rgba(15,23,42,.10);
-      }
     }
 
     *{box-sizing:border-box}
@@ -84,9 +59,6 @@ html, body { background-clip: border-box; }
       background-size:22px 22px;
       mask-image:linear-gradient(to bottom, black, transparent 70%);
     }
-    :root[data-theme="light"] .gridfx::before{
-      background:radial-gradient(circle at 1px 1px, rgba(15,23,42,.16) 1px, transparent 1px);
-    }
 
     /* ===== Header ===== */
     .site-header{position:relative; background:transparent;}
@@ -113,9 +85,6 @@ html, body { background-clip: border-box; }
       background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 30%);
       border-radius:inherit;
     }
-    :root[data-theme="light"] .card::before{
-      background:linear-gradient(180deg, rgba(15,23,42,.015), transparent 30%);
-    }
 
     h1{font-size:28px; margin:0 0 10px; letter-spacing:.3px; color:var(--text-strong)}
     p.sub{margin:0 0 20px;color:var(--muted)}
@@ -132,10 +101,6 @@ html, body { background-clip: border-box; }
       color:var(--text);outline:none;transition:border-color .15s ease, box-shadow .15s ease, background .2s ease, transform .08s ease;
       box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
       font-size:14px;
-    }
-    :root[data-theme="light"] input[type="number"],
-    :root[data-theme="light"] .csel-btn{
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.8), 0 1px 2px rgba(15,23,42,.04);
     }
     input[type="number"]:hover, .csel-btn:hover{border-color:rgba(139,92,246,.55)}
     input[type="number"]:focus, .csel-btn:focus{
@@ -201,7 +166,6 @@ html, body { background-clip: border-box; }
     .calc-list div{color:var(--text)}
     .calc-formula{font-family:"IBM Plex Mono","Fira Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;margin:0 0 10px;padding:10px 12px;
       background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.25);border-radius:12px;color:var(--text)}
-    :root[data-theme="light"] .calc-formula{background:rgba(139,92,246,.08); border-color:rgba(139,92,246,.20)}
     .calc-note{font-size:12px;color:var(--muted);margin:6px 0 0}
     .calc-rules{list-style:none;margin:6px 0 12px;padding:0;font-size:12px;line-height:1.5;color:var(--muted)}
     .calc-rules li{margin:0 0 4px}
@@ -232,40 +196,6 @@ html, body { background-clip: border-box; }
     /* ===== Reduced motion ===== */
     @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
 
-    /* === Theme toggle & explicit theme maps === */
-    .theme-toggle{
-      display:inline-flex;align-items:center;justify-content:center;gap:6px;
-      width:44px;height:44px;border-radius:999px;border:1px solid var(--border);
-      background:var(--card-2); color:var(--text);
-      cursor:pointer; box-shadow:var(--shadow);
-      transition:transform .08s ease, box-shadow .18s ease, border-color .15s ease;
-      font-size:18px;
-    }
-    .theme-toggle:hover{box-shadow:0 12px 26px rgba(2,6,23,.24); border-color:rgba(139,92,246,.50)}
-    .theme-toggle:active{transform:translateY(1px) scale(.98)}
-
-    :root[data-theme="dark"]{
-      color-scheme: dark;
-      --bg:#0a0c14; --bg-2:#111620; --elev:rgba(255,255,255,.04);
-      --glass:rgba(255,255,255,.06); --glass-stroke:rgba(255,255,255,.14);
-      --text:#f2f5fb; --text-strong:#ffffff; --muted:#b6bfd1;
-      --card:#141a26; --card-2:#1a2230; --border:rgba(255,255,255,.12);
-      --accent:#8b5cf6; --accent-2:#22d3ee; --accent-3:#f472b6;
-      --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
-      --radius:18px; --shadow:0 20px 50px rgba(2,6,23,.45);
-      --focus-ring:0 0 0 4px rgba(139,92,246,.30), 0 8px 24px rgba(34,211,238,.18);
-    }
-    :root[data-theme="light"]{
-      color-scheme: light;
-      --bg:#f4f6fb; --bg-2:#ffffff; --elev:rgba(15,23,42,.02);
-      --glass:rgba(255,255,255,.7); --glass-stroke:rgba(15,23,42,.10);
-      --text:#0b1220; --text-strong:#030712; --muted:#546072;
-      --card:#ffffff; --card-2:#f7f9fd; --border:rgba(15,23,42,.10);
-      --accent:#7c3aed; --accent-2:#0891b2; --accent-3:#ec4899;
-      --ok:#16a34a; --warn:#d97706; --bad:#dc2626;
-      --radius:18px; --shadow:0 16px 40px rgba(15,23,42,.10);
-      --focus-ring:0 0 0 4px rgba(124,58,237,.22), 0 8px 24px rgba(8,145,178,.16);
-    }
 
     /* === Enhancements: validation, mobile, sticky actions, table scroll === */
     .input-error{border-color:var(--bad)!important; box-shadow:0 0 0 6px rgba(239,68,68,.20), 0 6px 24px rgba(239,68,68,.12)!important;}
@@ -320,9 +250,6 @@ html, body { background-clip: border-box; }
       .calc-card h5{font-size:15px}
       .calc-formula{font-size:11px; padding:9px 10px}
 
-      /* Тема-тоггл: чуть крупнее для удобного тапа */
-      .theme-toggle{width:46px; height:46px}
-
       /* Липкая панель кнопок — на всю ширину, удобный тап */
       .btns{
         position:sticky; bottom:0;
@@ -333,7 +260,6 @@ html, body { background-clip: border-box; }
         border-top:1px solid var(--border); z-index:20;
         display:flex; gap:10px;
       }
-      :root[data-theme="light"] .btns{background:linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.97));}
       .btns button{flex:1 1 auto; padding:14px 16px; font-size:15px}
       .btns .ghost{flex:0 1 auto}
       .btns #formError{flex:1 1 100%; order:-1; margin:0 0 4px}
@@ -362,7 +288,6 @@ html, body { background-clip: border-box; }
       .brand-mark{width:38px;height:38px;border-radius:12px}
       .brand-title{font-size:16px}
       .stat .val{font-size:22px}
-      .theme-toggle{width:42px;height:42px;font-size:16px}
       .card{padding:14px 12px}
     }
 
@@ -402,9 +327,6 @@ html.is-embed [class*="card"]{
           <div class="brand-sub">Калькулятор эффективности и лидерства</div>
         </div>
       </div>
-      <button id="themeToggle" class="theme-toggle" aria-pressed="false" aria-label="Переключатель темы" title="Переключить тему">
-        <span data-sun>☀️</span><span data-moon style="display:none">🌙</span>
-      </button>
     </div>
   </header>
 
@@ -1227,45 +1149,6 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
         });
     }
 
-    // ===== Theme toggle logic =====
-    (function(){
-      const root = document.documentElement;
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-      const btn = document.getElementById('themeToggle');
-
-      function updateToggle(){
-        if(!btn) return;
-        const t = root.getAttribute('data-theme');
-        const isDark = t ? t==='dark' : prefersDark.matches;
-        btn.setAttribute('aria-pressed', String(isDark));
-        const sun = btn.querySelector('[data-sun]');
-        const moon = btn.querySelector('[data-moon]');
-        if(sun && moon){ sun.style.display = isDark ? 'none' : 'inline'; moon.style.display = isDark ? 'inline' : 'none'; }
-        btn.title = isDark ? 'Светлая тема' : 'Тёмная тема';
-      }
-      function applySavedTheme(){
-        const saved = localStorage.getItem('theme');
-        if(saved==='light' || saved==='dark'){
-          root.setAttribute('data-theme', saved);
-        } else {
-          root.removeAttribute('data-theme');
-        }
-        updateToggle();
-      }
-      function toggleTheme(){
-        const cur = root.getAttribute('data-theme');
-        let next;
-        if(cur){ next = cur==='dark' ? 'light' : 'dark'; }
-        else { next = prefersDark.matches ? 'light' : 'dark'; }
-        root.setAttribute('data-theme', next);
-        localStorage.setItem('theme', next);
-        updateToggle();
-      }
-      if(btn){ btn.addEventListener('click', toggleTheme); }
-      prefersDark.addEventListener('change', ()=>{ if(!root.getAttribute('data-theme')) updateToggle(); });
-      applySavedTheme();
-    })();
-
     /* ======= ENHANCEMENTS: AUTOSAVE, VALIDATION, MOBILE ACCORDION, LIVE KPI HINTS ======= */
 
     // Registry helpers
@@ -1660,16 +1543,6 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
   const isEmbed = (window.self !== window.top);
   if(isEmbed){
     document.documentElement.classList.add('is-embed');
-    // Переносим кнопку переключения темы в карточку — чтобы стояла
-    // на уровне заголовка «Калькулятор эффективности и лидерства»
-    try{
-      const toggle = document.getElementById('themeToggle');
-      const card = document.querySelector('.container .card');
-      if(toggle && card && !toggle.classList.contains('is-floating')){
-        toggle.classList.add('is-floating');
-        card.insertBefore(toggle, card.firstChild);
-      }
-    }catch(e){}
   }
 
   // шлём высоту родителю (Bitrix-странице)
