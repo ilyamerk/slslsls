@@ -6,23 +6,25 @@
   <meta name="color-scheme" content="light dark" />
   <title>Калькулятор эффективности и лидерства — Neo</title>
   <style>
-  /* Когда страница во фрейме — убираем крупную «шапку»
-   и добавляем отступ снизу, чтобы кнопку Bitrix не накрывало.
-   Но оставляем плавающую кнопку переключения темы в правом верхнем углу. */
-.is-embed .site-header{
-  position:fixed; top:10px; right:10px; left:auto;
-  z-index:120; padding:0; pointer-events:none;
+  /* Когда страница во фрейме — убираем большую «шапку».
+     Кнопка переключения темы через JS переезжает внутрь карточки
+     и там позиционируется абсолютно, чтобы стоять ровно на уровне заголовка. */
+.is-embed .site-header{ display:none; }
+.is-embed .container{ padding-top: 12px; padding-bottom: 120px; }
+
+/* Плавающая кнопка темы внутри карточки (embed-режим) */
+.card .theme-toggle.is-floating{
+  position:absolute;
+  top:18px;
+  right:18px;
+  z-index:5;
+  box-shadow:0 8px 22px rgba(2,6,23,.30), 0 0 0 1px var(--border);
 }
-.is-embed .header-inner{
-  padding:0; margin:0; display:block; pointer-events:auto;
-  max-width:none;
+.is-embed .card > h1{ padding-right:60px; }
+@media (max-width: 860px){
+  .card .theme-toggle.is-floating{ top:14px; right:14px; }
+  .is-embed .card > h1{ padding-right:56px; }
 }
-.is-embed .brand{display:none}
-.is-embed .theme-toggle{
-  box-shadow:0 10px 28px rgba(2,6,23,.35), 0 0 0 1px var(--border);
-  backdrop-filter:saturate(140%) blur(10px);
-}
-.is-embed .container{ padding-top: 8px; padding-bottom: 120px; }
 
 /* На всякий: прозрачный фон, чтобы не было белых «полей» вокруг */
 html, body { background-clip: border-box; }
@@ -1656,7 +1658,19 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
 (function(){
   // помечаем «режим встраивания» (страница не в топ-окне)
   const isEmbed = (window.self !== window.top);
-  if(isEmbed){ document.documentElement.classList.add('is-embed'); }
+  if(isEmbed){
+    document.documentElement.classList.add('is-embed');
+    // Переносим кнопку переключения темы в карточку — чтобы стояла
+    // на уровне заголовка «Калькулятор эффективности и лидерства»
+    try{
+      const toggle = document.getElementById('themeToggle');
+      const card = document.querySelector('.container .card');
+      if(toggle && card && !toggle.classList.contains('is-floating')){
+        toggle.classList.add('is-floating');
+        card.insertBefore(toggle, card.firstChild);
+      }
+    }catch(e){}
+  }
 
   // шлём высоту родителю (Bitrix-странице)
   function postHeight(){
