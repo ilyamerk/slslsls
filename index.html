@@ -798,26 +798,41 @@ html.is-embed [class*="card"]{
     breakdown.context = 'Формула для ТУ (без индекса команды)';
   } else {
     const teamRaw = num($('#teamIndex').value);
-    const teamScore = Number.isFinite(teamRaw) ? teamRaw : 0;
-    const teamValue = Number.isFinite(teamRaw) ? fmtValue(teamRaw) : '— (использовано 0)';
-    addMetric({
-      label:'Балл (индекс команды)',
-      valueDisplay: teamValue,
-      score: teamScore,
-      scale: SCALE_TEXT.teamIndex,
-      note: Number.isFinite(teamRaw) ? '' : 'Поле пустое — в расчёте используется 0.',
-    });
-
+    const hasTeam = Number.isFinite(teamRaw);
     const mid = (axScore + assessScore) / 2;
-    baseTotal = (mid + hrScore + teamScore) / 3;
     breakdown.steps.push({
       label:'Среднее по Аксиологии и Ассессменту',
       formula:`(${fmtScore(axScore)} + ${fmtScore(assessScore)}) / 2 = ${fmt(mid)}`,
     });
-    breakdown.steps.push({
-      label:'Итог без штрафов',
-      formula:`(${fmt(mid)} + ${fmtScore(hrScore)} + ${fmtScore(teamScore)}) / 3 = ${fmt(baseTotal)}`,
-    });
+
+    if(hasTeam){
+      const teamScore = teamRaw;
+      addMetric({
+        label:'Балл (индекс команды)',
+        valueDisplay: fmtValue(teamRaw),
+        score: teamScore,
+        scale: SCALE_TEXT.teamIndex,
+        note: '',
+      });
+      baseTotal = (mid + hrScore + teamScore) / 3;
+      breakdown.steps.push({
+        label:'Итог без штрафов',
+        formula:`(${fmt(mid)} + ${fmtScore(hrScore)} + ${fmtScore(teamScore)}) / 3 = ${fmt(baseTotal)}`,
+      });
+    } else {
+      addMetric({
+        label:'Балл (индекс команды)',
+        valueDisplay: '— (не заполнен, не учитывается)',
+        score: null,
+        scale: SCALE_TEXT.teamIndex,
+        note: 'Поле не заполнено — показатель исключён из расчёта.',
+      });
+      baseTotal = (mid + hrScore) / 2;
+      breakdown.steps.push({
+        label:'Итог без штрафов',
+        formula:`(${fmt(mid)} + ${fmtScore(hrScore)}) / 2 = ${fmt(baseTotal)}`,
+      });
+    }
     breakdown.context = 'Формула для должностей «Директор»';
   }
 
@@ -1125,6 +1140,10 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
       $('#budgetWrap').style.display = (bu==='ФК' && role==='Директор Производства') ? '' : 'none';
       const showTeamIndex = (bu==='ФК' && role==='Директор Производства') || (DIRECTOR_ROLES_WITH_TEAM.includes(role) && role!=='ТУ' && role!=='РУ' && role!=='РМ');
       $('#teamIndexWrap').style.display = showTeamIndex ? '' : 'none';
+      const teamIndexLabel = document.querySelector('#teamIndexWrap label[for="teamIndex"]');
+      if(teamIndexLabel){
+        teamIndexLabel.textContent = (role==='Директор') ? 'Балл (индекс команды) — необязательно' : 'Балл (индекс команды)';
+      }
       const showTeamCalc = ['ОД','РУ','РМ'].includes(role);
       $('#teamCalcWrap').style.display = showTeamCalc ? '' : 'none';
     }
@@ -1317,7 +1336,7 @@ $('#lbl-t2').textContent = (bu === 'ФК' && FC_ROLES.includes(role)) ? '% Не�
         const el = document.getElementById('budgetExec');
         if(el && (el.value==='' || el.value==null)) missing.push(el);
       }
-      if(teamWrap && teamWrap.style.display !== 'none'){
+      if(teamWrap && teamWrap.style.display !== 'none' && roleSel.value !== 'Директор'){
         const el = document.getElementById('teamIndex');
         if(el && (el.value==='' || el.value==null)) missing.push(el);
       }
